@@ -1,0 +1,16 @@
+
+venv/
+
+.env
+
+__pycache__/
+*.py[cod]
+
+*/migrations/__pycache__/
+
+.vscode/
+.idea/
+
+*.log
+
+*.tmp
