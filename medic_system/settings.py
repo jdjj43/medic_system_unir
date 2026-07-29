@@ -44,7 +44,9 @@ INSTALLED_APPS = [
     'medicos',
     'pacientes',
     'auditoria',
+    'reportes',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -58,13 +60,13 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'medic_system.urls'
 
-#agregado
-STATIC_URL = "static/"
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        "DIRS": [
+            BASE_DIR / "templates",
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -129,7 +131,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
-#Agregado
-AUTH_USER_MODEL = "usuarios.Usuario"
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
+# Media files
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+# Agregado
+AUTH_USER_MODEL = "usuarios.Usuario"

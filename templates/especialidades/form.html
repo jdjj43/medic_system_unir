@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ titulo }}
+{% endblock %}
+
+{% block encabezado %}
+{{ titulo }}
+{% endblock %}
+
+{% block content %}
+
+<div class="card" style="max-width: 650px; margin: 0 auto;">
+
+    <h3 style="margin-bottom: 20px; color: #1E3A5F; border-bottom: 2px solid #edf3f8; padding-bottom: 10px;">
+        {{ titulo }}
+    </h3>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-error">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="{{ form.nombre.id_for_label }}">
+                {{ form.nombre.label }} <span style="color: red;">*</span>
+            </label>
+            {{ form.nombre }}
+            {% if form.nombre.errors %}
+                <div class="field-error">
+                    {% for error in form.nombre.errors %}
+                        <span>{{ error }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.descripcion.id_for_label }}">
+                {{ form.descripcion.label }}
+            </label>
+            {{ form.descripcion }}
+            {% if form.descripcion.errors %}
+                <div class="field-error">
+                    {% for error in form.descripcion.errors %}
+                        <span>{{ error }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 25px; justify-content: flex-end;">
+            <a href="{% url 'lista_especialidades' %}" class="btn btn-secondary">
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-success">
+                Guardar Especialidad
+            </button>
+        </div>
+    </form>
+
+</div>
+
+{% endblock %}

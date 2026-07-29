@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}
+Citas Médicas
+{% endblock %}
+
+{% block encabezado %}
+{% if medico_filtrado %}
+Citas del Dr. {{ medico_filtrado.usuario.get_full_name|default:medico_filtrado.usuario.username }}
+{% else %}
+Gestión de Citas Médicas
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <h3 style="margin: 0; color: #1E3A5F;">
+                {% if medico_filtrado %}
+                    Citas Asignadas: Dr. {{ medico_filtrado.usuario.get_full_name|default:medico_filtrado.usuario.username }} ({{ medico_filtrado.especialidad.nombre }})
+                {% else %}
+                    Todas las Citas Médicas
+                {% endif %}
+            </h3>
+            {% if medico_filtrado %}
+                <span style="font-size: 13px; color: #666;">
+                    Filtrado por médico | <a href="{% url 'lista_citas' %}" style="color: #4A90E2; font-weight: bold; text-decoration: underline;">Ver todas las citas</a>
+                </span>
+            {% endif %}
+        </div>
+        <div style="display: flex; gap: 10px;">
+            {% if medico_filtrado %}
+                <a href="{% url 'lista_medicos' %}" class="btn btn-secondary">
+                    ← Volver a Médicos
+                </a>
+            {% endif %}
+            <button type="button" class="btn btn-success" onclick="abrirModalFormCita()">
+                + Nueva Cita
+            </button>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Paciente</th>
+                <th>Médico</th>
+                <th>Especialidad</th>
+                <th>Fecha y Hora</th>
+                <th>Motivo</th>
+                <th>Estado</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for cita in citas %}
+            <tr>
+                <td>{{ cita.id }}</td>
+                <td><strong>{{ cita.paciente.nombres }} {{ cita.paciente.apellidos }}</strong><br><small style="color: #666;">C.I. {{ cita.paciente.cedula }}</small></td>
+                <td>Dr. {{ cita.medico.usuario.get_full_name|default:cita.medico.usuario.username }}</td>
+                <td><span class="badge badge-medico">{{ cita.medico.especialidad.nombre }}</span></td>
+                <td>
+                    <strong>{{ cita.fecha|date:"d/m/Y" }}</strong><br>
+                    <span style="font-size: 13px; color: #555;">{{ cita.hora|time:"h:i A" }}</span>
+                </td>
+                <td>{{ cita.motivo }}</td>
+                <td>
+                    {% if cita.estado == "PENDIENTE" %}
+                        <span class="badge" style="background-color: #fff3cd; color: #856404; border-color: #ffeeba;">Pendiente</span>
+                    {% elif cita.estado == "CONFIRMADA" %}
+                        <span class="badge badge-medico">Confirmada</span>
+                    {% elif cita.estado == "ATENDIDA" %}
+                        <span class="badge badge-active">Atendida</span>
+                    {% else %}
+                        <span class="badge badge-inactive">Cancelada</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <a href="{% url 'lista_historias' %}?paciente={{ cita.paciente.id }}" class="btn btn-secondary" style="padding: 6px 10px; font-size: 12px; background: #34495e; color: white; text-decoration: none;">
+                        📋 Historia
+                    </a>
+                    <button type="button" class="btn btn-edit"
+                            onclick="abrirModalFormCita('{{ cita.id }}', '{{ cita.paciente.id }}', '{{ cita.medico.id }}', '{{ cita.fecha|date:"Y-m-d" }}', '{{ cita.hora|time:"H:i" }}', '{{ cita.motivo|escapejs }}', '{{ cita.estado }}', '{{ cita.observaciones|default:''|escapejs }}')">
+                        Editar
+                    </button>
+                    <button type="button" class="btn btn-danger"
+                            onclick="abrirModalEliminarCita('{{ cita.id }}', '{{ cita.paciente.nombres|escapejs }} {{ cita.paciente.apellidos|escapejs }}', 'Dr. {{ cita.medico.usuario.get_full_name|default:cita.medico.usuario.username|escapejs }}', '{{ cita.fecha|date:"d/m/Y" }} {{ cita.hora|time:"h:i A" }}')">
+                        Eliminar
+                    </button>
+                </td>
+
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 25px; color: #666;">
+                    No se encontraron citas médicas agendadas.
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+
+<div class="modal-overlay" id="modalCitaOverlay">
+    <div class="modal-container" style="max-width: 650px;">
+        <div class="modal-header">
+            <h3 id="modalCitaTitulo">Agendar Nueva Cita</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalCitaOverlay')">&times;</button>
+        </div>
+        <form method="post" id="formCita" action="{% url 'crear_cita' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="cita_paciente">Paciente <span style="color: red;">*</span></label>
+                        <select name="paciente" id="cita_paciente" class="form-control" required>
+                            <option value="">-- Seleccionar Paciente --</option>
+                            {% for pac in form_cita.paciente.field.queryset %}
+                                <option value="{{ pac.id }}">{{ pac.nombres }} {{ pac.apellidos }} (C.I. {{ pac.cedula }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="cita_medico">Médico Asignado <span style="color: red;">*</span></label>
+                        <select name="medico" id="cita_medico" class="form-control" required>
+                            <option value="">-- Seleccionar Médico --</option>
+                            {% for med in form_cita.medico.field.queryset %}
+                                <option value="{{ med.id }}">Dr. {{ med.usuario.get_full_name|default:med.usuario.username }} - {{ med.especialidad.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cita_fecha">Fecha de la Cita <span style="color: red;">*</span></label>
+                        <input type="date" name="fecha" id="cita_fecha" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cita_hora">Hora de la Cita <span style="color: red;">*</span></label>
+                        <input type="time" name="hora" id="cita_hora" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cita_estado">Estado de la Cita <span style="color: red;">*</span></label>
+                        <select name="estado" id="cita_estado" class="form-control" required>
+                            <option value="PENDIENTE">Pendiente</option>
+                            <option value="CONFIRMADA">Confirmada</option>
+                            <option value="ATENDIDA">Atendida</option>
+                            <option value="CANCELADA">Cancelada</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="cita_motivo">Motivo de Consulta <span style="color: red;">*</span></label>
+                        <textarea name="motivo" id="cita_motivo" class="form-control" rows="3" placeholder="Motivo de la consulta médica..." required></textarea>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="cita_observaciones">Observaciones Adicionales</label>
+                        <textarea name="observaciones" id="cita_observaciones" class="form-control" rows="2" placeholder="Notas u observaciones adicionales..."></textarea>
+                    </div>
+
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalCitaOverlay')">Cancelar</button>
+                <button type="submit" class="btn btn-success">Guardar Cita</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<div class="modal-overlay" id="modalEliminarCitaOverlay">
+    <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-header" style="background: #c0392b;">
+            <h3>Confirmar Cancelación</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalEliminarCitaOverlay')">&times;</button>
+        </div>
+        <form method="post" id="formEliminarCita" action="">
+            {% csrf_token %}
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 40px; color: #e74c3c; margin-bottom: 10px;">⚠️</div>
+                <p style="font-size: 15px; color: #444;">
+                    ¿Estás seguro de que deseas eliminar la cita del paciente 
+                    <strong id="cita_eliminar_paciente" style="color: #1E3A5F;"></strong> 
+                    con el <strong id="cita_eliminar_medico"></strong> para el <span id="cita_eliminar_fecha"></span>?
+                </p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEliminarCitaOverlay')">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Sí, Eliminar Cita</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function cerrarModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    function abrirModalFormCita(id = null, pacienteId = '', medicoId = '', fecha = '', hora = '', motivo = '', estado = 'PENDIENTE', observaciones = '') {
+        const form = document.getElementById('formCita');
+        const titulo = document.getElementById('modalCitaTitulo');
+        
+        let medicoDefault = '{{ medico_filtrado.id|default:"" }}';
+        let targetMedico = medicoId || medicoDefault;
+
+        if (id) {
+            titulo.textContent = 'Editar Cita Médica';
+            form.action = '/citas/' + id + '/editar/' + (medicoDefault ? '?medico=' + medicoDefault : '');
+            document.getElementById('cita_paciente').value = pacienteId;
+            document.getElementById('cita_medico').value = targetMedico;
+            document.getElementById('cita_fecha').value = fecha;
+            document.getElementById('cita_hora').value = hora;
+            document.getElementById('cita_motivo').value = motivo;
+            document.getElementById('cita_estado').value = estado;
+            document.getElementById('cita_observaciones').value = observaciones;
+        } else {
+            titulo.textContent = 'Agendar Nueva Cita';
+            form.action = '{% url "crear_cita" %}' + (medicoDefault ? '?medico=' + medicoDefault : '');
+            document.getElementById('cita_paciente').value = '';
+            document.getElementById('cita_medico').value = targetMedico;
+            document.getElementById('cita_fecha').value = '';
+            document.getElementById('cita_hora').value = '';
+            document.getElementById('cita_motivo').value = '';
+            document.getElementById('cita_estado').value = 'PENDIENTE';
+            document.getElementById('cita_observaciones').value = '';
+        }
+        
+        document.getElementById('modalCitaOverlay').classList.add('active');
+    }
+
+    function abrirModalEliminarCita(id, paciente, medico, fechaHora) {
+        const form = document.getElementById('formEliminarCita');
+        let medicoDefault = '{{ medico_filtrado.id|default:"" }}';
+        form.action = '/citas/' + id + '/eliminar/' + (medicoDefault ? '?medico=' + medicoDefault : '');
+        document.getElementById('cita_eliminar_paciente').textContent = '"' + paciente + '"';
+        document.getElementById('cita_eliminar_medico').textContent = medico;
+        document.getElementById('cita_eliminar_fecha').textContent = fechaHora;
+        document.getElementById('modalEliminarCitaOverlay').classList.add('active');
+    }
+</script>
+
+{% endblock %}

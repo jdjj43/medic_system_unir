@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}
+Auditoría del Sistema
+{% endblock %}
+
+{% block encabezado %}
+Auditoría y Trazabilidad de Seguridad
+{% endblock %}
+
+{% block content %}
+
+<div class="card" style="margin-bottom: 25px;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+        <div>
+            <h3 style="margin: 0; color: #1E3A5F; font-size: 20px;">
+                Bitácora de Auditoría del Sistema
+            </h3>
+            <small style="color: #666;">
+                Registro automático e inalterable de operaciones realizadas por los usuarios autenticados.
+            </small>
+        </div>
+        <div>
+            <span class="badge" style="background: #ebf5fb; color: #2980b9; border: 1px solid #aed6f1; padding: 6px 12px; font-size: 13px;">
+                🔒 Registro de Seguridad Activo
+            </span>
+        </div>
+    </div>
+
+    <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <form method="get" action="{% url 'lista_auditoria' %}">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                
+                <div class="form-group">
+                    <label for="f_modulo" style="font-size: 12px; font-weight: 600;">Módulo:</label>
+                    <select name="modulo" id="f_modulo" class="form-control" style="height: 36px;">
+                        <option value="">-- Todos --</option>
+                        {% for mod in modulos_disponibles %}
+                            <option value="{{ mod }}" {% if modulo_filtro == mod %}selected{% endif %}>{{ mod }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="f_accion" style="font-size: 12px; font-weight: 600;">Acción:</label>
+                    <input type="text" name="accion" id="f_accion" class="form-control" placeholder="Ej: Inicio de sesión..." value="{{ accion_filtro }}" style="height: 36px;">
+                </div>
+
+                <div class="form-group">
+                    <label for="f_inicio" style="font-size: 12px; font-weight: 600;">Fecha Desde:</label>
+                    <input type="date" name="fecha_inicio" id="f_inicio" class="form-control" value="{{ fecha_inicio }}" style="height: 36px;">
+                </div>
+
+                <div class="form-group">
+                    <label for="f_fin" style="font-size: 12px; font-weight: 600;">Fecha Hasta:</label>
+                    <input type="date" name="fecha_fin" id="f_fin" class="form-control" value="{{ fecha_fin }}" style="height: 36px;">
+                </div>
+
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="f_q" style="font-size: 12px; font-weight: 600;">Búsqueda general:</label>
+                    <input type="text" name="q" id="f_q" class="form-control" placeholder="Buscar por usuario, IP o descripción..." value="{{ search_query }}" style="height: 36px;">
+                </div>
+
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;">
+                {% if modulo_filtro or accion_filtro or fecha_inicio or fecha_fin or search_query %}
+                    <a href="{% url 'lista_auditoria' %}" class="btn btn-secondary" style="height: 36px; line-height: 22px; background: #7f8c8d; color: white;">
+                        Limpiar Filtros
+                    </a>
+                {% endif %}
+                <button type="submit" class="btn btn-success" style="height: 36px;">
+                    🔍 Buscar en Auditoría
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <table class="table" style="width: 100%; border-collapse: collapse;">
+
+        <thead>
+            <tr style="background: #1E3A5F; color: white; font-size: 13px;">
+                <th style="padding: 10px; text-align: left;">Fecha y Hora</th>
+                <th style="padding: 10px; text-align: left;">Usuario</th>
+                <th style="padding: 10px; text-align: left;">Módulo</th>
+                <th style="padding: 10px; text-align: left;">Acción</th>
+                <th style="padding: 10px; text-align: left;">Descripción de la Operación</th>
+                <th style="padding: 10px; text-align: center;">IP</th>
+                <th style="padding: 10px; text-align: center;">ID Objeto</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for r in registros %}
+            <tr style="border-bottom: 1px solid #eee; font-size: 13px;">
+                <td style="padding: 10px; white-space: nowrap;">
+                    <strong>{{ r.fecha_hora|date:"d/m/Y" }}</strong><br>
+                    <small style="color: #666;">{{ r.fecha_hora|date:"H:i:s" }} hrs</small>
+                </td>
+                <td style="padding: 10px; white-space: nowrap;">
+                    {% if r.usuario %}
+                        <strong>{{ r.usuario.username }}</strong><br>
+                        <small style="color: #555;">{{ r.usuario.get_full_name|default:r.usuario.rol }}</small>
+                    {% else %}
+                        <span style="color: #95a5a6; font-style: italic;">Sistema / Eliminado</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 10px; white-space: nowrap;">
+                    <span class="badge" style="background: #eef2f7; color: #2c3e50; border: 1px solid #cbd5e1; font-weight: 600;">
+                        {{ r.modulo }}
+                    </span>
+                </td>
+                <td style="padding: 10px; white-space: nowrap;">
+                    <strong style="color: #1E3A5F;">{{ r.accion }}</strong>
+                </td>
+                <td style="padding: 10px; color: #333; max-width: 320px;">
+                    {{ r.descripcion }}
+                </td>
+                <td style="padding: 10px; text-align: center; white-space: nowrap;">
+                    {% if r.direccion_ip %}
+                        <code style="background: #f1f2f6; padding: 2px 6px; border-radius: 4px; color: #2f3542; font-size: 12px;">{{ r.direccion_ip }}</code>
+                    {% else %}
+                        <span style="color: #aaa;">-</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 10px; text-align: center;">
+                    {% if r.objeto_id %}
+                        <span class="badge badge-medico">#{{ r.objeto_id }}</span>
+                    {% else %}
+                        <span style="color: #aaa;">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                    No existen registros de auditoría que coincidan con la búsqueda.
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+{% endblock %}

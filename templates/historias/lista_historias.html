@@ -1,0 +1,487 @@
+{% extends "base.html" %}
+
+{% block title %}
+Historias Clínicas
+{% endblock %}
+
+{% block encabezado %}
+Gestión de Historias Clínicas
+{% endblock %}
+
+{% block content %}
+
+<div class="card" style="margin-bottom: 25px;">
+
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: #1E3A5F; font-size: 20px;">
+            {% if paciente_filtrado %}
+                Expediente Clínico de: <span style="color: #27ae60;">{{ paciente_filtrado.nombres }} {{ paciente_filtrado.apellidos }}</span> ({{ paciente_filtrado.cedula }})
+            {% else %}
+                Historias Clínicas Registradas
+            {% endif %}
+        </h3>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <form method="get" action="{% url 'lista_historias' %}" style="display: flex; gap: 8px;">
+                {% if paciente_filtrado %}
+                    <input type="hidden" name="paciente" value="{{ paciente_filtrado.id }}">
+                {% endif %}
+                <input type="text" name="q" class="form-control" placeholder="Buscar diagnóstico o paciente..." value="{{ search_query }}" style="width: 240px; height: 38px;">
+                <button type="submit" class="btn btn-secondary" style="height: 38px;">🔍 Buscar</button>
+            </form>
+
+            {% if paciente_filtrado or search_query %}
+                <a href="{% url 'lista_historias' %}" class="btn btn-secondary" style="height: 38px; line-height: 24px; background: #7f8c8d; color: white;">Ver Todas</a>
+            {% endif %}
+
+            <button type="button" class="btn btn-success" onclick="abrirModalFormHistoria()" style="height: 38px;">
+                + Nueva Historia
+            </button>
+        </div>
+    </div>
+
+
+    <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-weight: 600; color: #1E3A5F; font-size: 14px;">Filtrar por Paciente:</span>
+            <select id="selectFiltroPaciente" class="form-control" style="width: 300px; height: 36px;" onchange="filtrarPorPaciente(this.value)">
+                <option value="">-- Todos los pacientes --</option>
+                {% for p in pacientes %}
+                    <option value="{{ p.id }}" {% if paciente_filtrado and paciente_filtrado.id == p.id %}selected{% endif %}>
+                        {{ p.apellidos }}, {{ p.nombres }} (C.I. {{ p.cedula }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if paciente_filtrado %}
+            <a href="{% url 'lista_historias' %}" style="font-size: 13px; color: #e74c3c; text-decoration: underline;">
+                ✖ Limpiar filtro de paciente
+            </a>
+        {% endif %}
+    </div>
+
+
+    <table class="table" style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #1E3A5F; color: white;">
+                <th style="padding: 12px; text-align: left;">Fecha</th>
+                <th style="padding: 12px; text-align: left;">Paciente</th>
+                <th style="padding: 12px; text-align: left;">Médico Tratante</th>
+                <th style="padding: 12px; text-align: left;">Diagnóstico</th>
+                <th style="padding: 12px; text-align: center;">Adjuntos</th>
+                <th style="padding: 12px; text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for h in historias %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px; white-space: nowrap;">
+                    <strong>{{ h.fecha|date:"d/m/Y" }}</strong><br>
+                    <small style="color: #777;">{{ h.fecha|date:"H:i" }} hrs</small>
+                </td>
+                <td style="padding: 12px;">
+                    <strong>{{ h.paciente.nombres }} {{ h.paciente.apellidos }}</strong><br>
+                    <small style="color: #555;">C.I. {{ h.paciente.cedula }}</small>
+                </td>
+                <td style="padding: 12px;">
+                    Dr. {{ h.medico.usuario.get_full_name|default:h.medico.usuario.username }}<br>
+                    <small class="badge badge-medico">{{ h.medico.especialidad.nombre }}</small>
+                </td>
+                <td style="padding: 12px; max-width: 250px;">
+                    <div style="font-weight: 600; color: #2c3e50; margin-bottom: 4px;">
+                        {{ h.diagnostico|truncatechars:70 }}
+                    </div>
+                    {% if h.sintomas %}
+                        <small style="color: #666; display: block;">
+                            <strong>Síntomas:</strong> {{ h.sintomas|truncatechars:50 }}
+                        </small>
+                    {% endif %}
+                </td>
+                <td style="padding: 12px; text-align: center;">
+                    {% if h.archivos.all %}
+                        <span class="badge" style="background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; padding: 4px 8px; font-weight: bold;">
+                            📁 {{ h.archivos.count }} archivo(s)
+                        </span>
+                    {% else %}
+                        <span style="color: #aaa; font-size: 12px;">Sin adjuntos</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 12px; text-align: center; white-space: nowrap;">
+                    <button type="button" class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px; background: #34495e; color: white;"
+                            onclick="verDetalleHistoria('{{ h.id }}', '{{ h.paciente.nombres|escapejs }} {{ h.paciente.apellidos|escapejs }}', '{{ h.paciente.cedula|escapejs }}', 'Dr. {{ h.medico.usuario.get_full_name|default:h.medico.usuario.username|escapejs }}', '{{ h.fecha|date:"d/m/Y H:i" }}', '{{ h.diagnostico|escapejs }}', '{{ h.sintomas|default:""|escapejs }}', '{{ h.tratamiento|default:""|escapejs }}', '{{ h.observaciones|default:""|escapejs }}')">
+                        👁 Ver Detalle
+                    </button>
+                    <button type="button" class="btn btn-edit" style="padding: 5px 10px; font-size: 12px;"
+                            onclick="abrirModalFormHistoria('{{ h.id }}', '{{ h.paciente.id }}', '{{ h.medico.id }}', '{{ h.cita.id }}', '{{ h.diagnostico|escapejs }}', '{{ h.sintomas|default:""|escapejs }}', '{{ h.tratamiento|default:""|escapejs }}', '{{ h.observaciones|default:""|escapejs }}')">
+                        ✏️ Editar
+                    </button>
+                    <button type="button" class="btn" style="padding: 5px 10px; font-size: 12px; background: #8e44ad; color: white;"
+                            onclick="abrirModalSubirArchivo('{{ h.id }}', '{{ h.paciente.nombres|escapejs }} {{ h.paciente.apellidos|escapejs }}')">
+                        📎 Adjuntar
+                    </button>
+                    <button type="button" class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;"
+                            onclick="abrirModalEliminarHistoria('{{ h.id }}', '{{ h.paciente.nombres|escapejs }} {{ h.paciente.apellidos|escapejs }}', '{{ h.fecha|date:"d/m/Y" }}')">
+                        🗑️
+                    </button>
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                    No existen historias clínicas registradas para la consulta actual.
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+
+<div class="modal-overlay" id="modalHistoriaOverlay">
+    <div class="modal-container" style="max-width: 750px;">
+        <div class="modal-header">
+            <h3 id="modalHistoriaTitulo">Registrar Nueva Historia Clínica</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalHistoriaOverlay')">&times;</button>
+        </div>
+        <form method="post" id="formHistoria" action="{% url 'crear_historia' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+
+                    <div class="form-group">
+                        <label for="hist_paciente">Paciente <span style="color: red;">*</span></label>
+                        <select name="paciente" id="hist_paciente" class="form-control" required>
+                            <option value="">-- Seleccionar Paciente --</option>
+                            {% for p in pacientes %}
+                                <option value="{{ p.id }}">{{ p.nombres }} {{ p.apellidos }} (C.I. {{ p.cedula }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="hist_medico">Médico Tratante <span style="color: red;">*</span></label>
+                        {{ form_historial.medico }}
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="hist_cita">Cita Médica Asociada <span style="color: red;">*</span></label>
+                        {{ form_historial.cita }}
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="hist_diagnostico">Diagnóstico Clínico <span style="color: red;">*</span></label>
+                        {{ form_historial.diagnostico }}
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="hist_sintomas">Síntomas Presentados</label>
+                        {{ form_historial.sintomas }}
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="hist_tratamiento">Tratamiento e Indicaciones</label>
+                        {{ form_historial.tratamiento }}
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="hist_observaciones">Observaciones Adicionales</label>
+                        {{ form_historial.observaciones }}
+                    </div>
+
+                    <div id="seccionAdjuntoInicial" style="grid-column: span 2; border-top: 1px dashed #ccc; padding-top: 15px; margin-top: 5px;">
+                        <h5 style="margin: 0 0 10px 0; color: #1E3A5F;">Documento Adjunto (Opcional)</h5>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="form-group">
+                                <label for="adj_tipo_inicial">Tipo de Documento</label>
+                                <input type="text" name="tipo" id="adj_tipo_inicial" class="form-control" placeholder="Ej: Resultado de Laboratorio, Radiografía...">
+                            </div>
+                            <div class="form-group">
+                                <label for="adj_archivo_inicial">Seleccionar Archivo</label>
+                                <input type="file" name="archivo" id="adj_archivo_inicial" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalHistoriaOverlay')">Cancelar</button>
+                <button type="submit" class="btn btn-success">Guardar Historia Clínica</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<div class="modal-overlay" id="modalDetalleOverlay">
+
+    <div class="modal-container" style="max-width: 750px;">
+        <div class="modal-header" style="background: #1E3A5F;">
+            <h3 style="color: white;">Detalle de Consulta Médica</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalDetalleOverlay')">&times;</button>
+        </div>
+        <div class="modal-body" style="font-size: 14px; color: #333;">
+            <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-bottom: 15px;">
+                <div>
+                    <h4 id="det_paciente_nombre" style="margin: 0; color: #2c3e50; font-size: 18px;"></h4>
+                    <span id="det_paciente_cedula" style="color: #7f8c8d; font-weight: 600;"></span>
+                </div>
+                <div style="text-align: right;">
+                    <span id="det_fecha" style="font-weight: bold; color: #2980b9;"></span><br>
+                    <small id="det_medico" style="color: #555;"></small>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 15px; background: #eef9f1; border-left: 4px solid #27ae60; padding: 12px; border-radius: 4px;">
+                <strong style="color: #1e8449; display: block; margin-bottom: 5px;">🩺 DIAGNÓSTICO:</strong>
+                <p id="det_diagnostico" style="margin: 0; white-space: pre-wrap; font-size: 15px; color: #2c3e50;"></p>
+            </div>
+
+            <div style="margin-bottom: 15px; background: #fdfefe; border-left: 4px solid #3498db; padding: 12px; border-radius: 4px;">
+                <strong style="color: #2980b9; display: block; margin-bottom: 5px;">💬 SÍNTOMAS:</strong>
+                <p id="det_sintomas" style="margin: 0; white-space: pre-wrap; color: #555;"></p>
+            </div>
+
+            <div style="margin-bottom: 15px; background: #fef9e7; border-left: 4px solid #f39c12; padding: 12px; border-radius: 4px;">
+                <strong style="color: #d68910; display: block; margin-bottom: 5px;">💊 TRATAMIENTO:</strong>
+                <p id="det_tratamiento" style="margin: 0; white-space: pre-wrap; color: #555;"></p>
+            </div>
+
+            <div style="margin-bottom: 15px; background: #f4f6f7; border-left: 4px solid #95a5a6; padding: 12px; border-radius: 4px;">
+                <strong style="color: #7f8c8d; display: block; margin-bottom: 5px;">📝 OBSERVACIONES:</strong>
+                <p id="det_observaciones" style="margin: 0; white-space: pre-wrap; color: #555;"></p>
+            </div>
+
+            <div style="border-top: 1px solid #e0e0e0; padding-top: 15px; margin-top: 15px;">
+                <h5 style="margin: 0 0 10px 0; color: #1E3A5F; font-size: 15px;">📁 Archivos Adjuntos</h5>
+                <div id="det_archivos_lista" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalDetalleOverlay')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal-overlay" id="modalSubirArchivoOverlay">
+    <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-header" style="background: #8e44ad;">
+            <h3 style="color: white;">Adjuntar Documento Médico</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalSubirArchivoOverlay')">&times;</button>
+        </div>
+        <form method="post" id="formSubirArchivo" action="" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #555;">
+                    Adjuntar archivo a la historia de: <strong id="subir_archivo_paciente" style="color: #1E3A5F;"></strong>
+                </p>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="subir_tipo">Tipo / Nombre del Documento <span style="color: red;">*</span></label>
+                    <input type="text" name="tipo" id="subir_tipo" class="form-control" placeholder="Ej: Radiografía de Tórax, Hemograma..." required>
+                </div>
+                <div class="form-group">
+                    <label for="subir_archivo_input">Seleccionar Archivo <span style="color: red;">*</span></label>
+                    <input type="file" name="archivo" id="subir_archivo_input" class="form-control" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalSubirArchivoOverlay')">Cancelar</button>
+                <button type="submit" class="btn btn-success" style="background: #8e44ad; border-color: #8e44ad;">Subir Documento</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<div class="modal-overlay" id="modalEliminarHistoriaOverlay">
+    <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-header" style="background: #c0392b;">
+            <h3 style="color: white;">Confirmar Eliminación</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalEliminarHistoriaOverlay')">&times;</button>
+        </div>
+        <form method="post" id="formEliminarHistoria" action="">
+            {% csrf_token %}
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 40px; color: #e74c3c; margin-bottom: 10px;">⚠️</div>
+                <p style="font-size: 15px; color: #444;">
+                    ¿Estás seguro de que deseas eliminar permanentemente la historia médica del paciente 
+                    <strong id="hist_eliminar_paciente" style="color: #1E3A5F;"></strong> del día <span id="hist_eliminar_fecha"></span>?
+                </p>
+                <p style="background: #f8d7da; color: #721c24; padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-top: 10px;">
+                    Esta acción no se puede deshacer y eliminará sus archivos adjuntos.
+                </p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEliminarHistoriaOverlay')">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Sí, Eliminar Historia</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalEliminarArchivoOverlay">
+    <div class="modal-container" style="max-width: 450px;">
+        <div class="modal-header" style="background: #c0392b;">
+            <h3 style="color: white;">Eliminar Archivo</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalEliminarArchivoOverlay')">&times;</button>
+        </div>
+        <form method="post" id="formEliminarArchivo" action="">
+            {% csrf_token %}
+            <div class="modal-body" style="text-align: center;">
+                <p style="font-size: 15px; color: #444;">
+                    ¿Deseas eliminar el documento <strong id="archivo_eliminar_nombre" style="color: #c0392b;"></strong> de la historia clínica?
+                </p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEliminarArchivoOverlay')">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Eliminar Archivo</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+
+    const HISTORIAS_ARCHIVOS = {
+        {% for h in historias %}
+            "{{ h.id }}": [
+                {% for a in h.archivos.all %}
+                    {
+                        "id": "{{ a.id }}",
+                        "tipo": "{{ a.tipo|escapejs }}",
+                        "url": "{{ a.archivo.url }}",
+                        "fecha": "{{ a.fecha_subida|date:'d/m/Y H:i' }}"
+                    }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ]{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    function cerrarModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    function filtrarPorPaciente(pacienteId) {
+        if (pacienteId) {
+            window.location.href = "{% url 'lista_historias' %}?paciente=" + pacienteId;
+        } else {
+            window.location.href = "{% url 'lista_historias' %}";
+        }
+    }
+
+    function abrirModalFormHistoria(id = null, pacienteId = '', medicoId = '', citaId = '', diagnostico = '', sintomas = '', tratamiento = '', observaciones = '') {
+        const form = document.getElementById('formHistoria');
+        const titulo = document.getElementById('modalHistoriaTitulo');
+        const seccionAdjunto = document.getElementById('seccionAdjuntoInicial');
+
+        if (id) {
+            titulo.textContent = 'Editar Historia Clínica';
+            form.action = '/historias/' + id + '/editar/';
+            if ('{{ paciente_filtrado.id|default:"" }}') {
+                form.action += '?paciente={{ paciente_filtrado.id }}';
+            }
+            document.getElementById('hist_paciente').value = pacienteId;
+            document.getElementById('id_medico').value = medicoId;
+            document.getElementById('id_cita').value = citaId;
+            document.getElementById('id_diagnostico').value = diagnostico;
+            document.getElementById('id_sintomas').value = sintomas;
+            document.getElementById('id_tratamiento').value = tratamiento;
+            document.getElementById('id_observaciones').value = observaciones;
+
+            seccionAdjunto.style.display = 'none';
+        } else {
+            titulo.textContent = 'Registrar Nueva Historia Clínica';
+            form.action = '{% url "crear_historia" %}';
+            if ('{{ paciente_filtrado.id|default:"" }}') {
+                form.action += '?paciente={{ paciente_filtrado.id }}';
+            }
+            document.getElementById('hist_paciente').value = pacienteId || '{{ paciente_filtrado.id|default:"" }}';
+            document.getElementById('id_medico').value = medicoId;
+            document.getElementById('id_cita').value = citaId;
+            document.getElementById('id_diagnostico').value = '';
+            document.getElementById('id_sintomas').value = '';
+            document.getElementById('id_tratamiento').value = '';
+            document.getElementById('id_observaciones').value = '';
+
+            seccionAdjunto.style.display = 'block';
+        }
+
+        document.getElementById('modalHistoriaOverlay').classList.add('active');
+    }
+
+    function verDetalleHistoria(id, pacienteNombre, cedula, medicoNombre, fecha, diagnostico, sintomas, tratamiento, observaciones) {
+        document.getElementById('det_paciente_nombre').textContent = pacienteNombre;
+        document.getElementById('det_paciente_cedula').textContent = 'C.I. ' + cedula;
+        document.getElementById('det_medico').textContent = medicoNombre;
+        document.getElementById('det_fecha').textContent = fecha;
+
+        document.getElementById('det_diagnostico').textContent = diagnostico || 'Sin diagnóstico registrado.';
+        document.getElementById('det_sintomas').textContent = sintomas || 'Sin síntomas especificados.';
+        document.getElementById('det_tratamiento').textContent = tratamiento || 'Sin tratamiento prescrito.';
+        document.getElementById('det_observaciones').textContent = observaciones || 'Sin observaciones adicionales.';
+
+        const contArchivos = document.getElementById('det_archivos_lista');
+        contArchivos.innerHTML = '';
+
+        const archivos = HISTORIAS_ARCHIVOS[id] || [];
+        if (archivos.length > 0) {
+            archivos.forEach(a => {
+                const item = document.createElement('div');
+                item.style.cssText = 'background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; width: 100%;';
+                item.innerHTML = `
+                    <div>
+                        <strong style="color: #2c3e50;">📄 ${a.tipo}</strong><br>
+                        <small style="color: #888;">Subido: ${a.fecha}</small>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <a href="${a.url}" target="_blank" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px; text-decoration: none;">📥 Abrir / Descargar</a>
+                        <button type="button" class="btn btn-danger" style="font-size: 11px; padding: 4px 8px;" onclick="abrirModalEliminarArchivo('${a.id}', '${a.tipo.replace(/'/g, "\\'")}')">🗑️</button>
+                    </div>
+                `;
+                contArchivos.appendChild(item);
+            });
+        } else {
+            contArchivos.innerHTML = '<span style="color: #888; font-size: 13px;">No hay documentos adjuntos para esta historia clínica.</span>';
+        }
+
+        document.getElementById('modalDetalleOverlay').classList.add('active');
+    }
+
+    function abrirModalSubirArchivo(historiaId, pacienteNombre) {
+        const form = document.getElementById('formSubirArchivo');
+        form.action = '/historias/' + historiaId + '/subir-archivo/';
+        if ('{{ paciente_filtrado.id|default:"" }}') {
+            form.action += '?paciente={{ paciente_filtrado.id }}';
+        }
+        document.getElementById('subir_archivo_paciente').textContent = pacienteNombre;
+        document.getElementById('subir_tipo').value = '';
+        document.getElementById('subir_archivo_input').value = '';
+        document.getElementById('modalSubirArchivoOverlay').classList.add('active');
+    }
+
+    function abrirModalEliminarHistoria(id, pacienteNombre, fecha) {
+        const form = document.getElementById('formEliminarHistoria');
+        form.action = '/historias/' + id + '/eliminar/';
+        if ('{{ paciente_filtrado.id|default:"" }}') {
+            form.action += '?paciente={{ paciente_filtrado.id }}';
+        }
+        document.getElementById('hist_eliminar_paciente').textContent = '"' + pacienteNombre + '"';
+        document.getElementById('hist_eliminar_fecha').textContent = fecha;
+        document.getElementById('modalEliminarHistoriaOverlay').classList.add('active');
+    }
+
+    function abrirModalEliminarArchivo(archivoId, nombreArchivo) {
+        const form = document.getElementById('formEliminarArchivo');
+        form.action = '/historias/archivo/' + archivoId + '/eliminar/';
+        if ('{{ paciente_filtrado.id|default:"" }}') {
+            form.action += '?paciente={{ paciente_filtrado.id }}';
+        }
+        document.getElementById('archivo_eliminar_nombre').textContent = '"' + nombreArchivo + '"';
+        document.getElementById('modalEliminarArchivoOverlay').classList.add('active');
+    }
+</script>
+
+{% endblock %}

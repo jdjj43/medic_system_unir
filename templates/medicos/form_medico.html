@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ titulo }}
+{% endblock %}
+
+{% block encabezado %}
+{{ titulo }}
+{% endblock %}
+
+{% block content %}
+
+<div class="card" style="max-width: 650px; margin: 0 auto;">
+
+    <h3 style="margin-bottom: 20px; color: #1E3A5F; border-bottom: 2px solid #edf3f8; padding-bottom: 10px;">
+        {{ titulo }}
+    </h3>
+
+    {% if not medico and form.usuario.field.queryset.count == 0 %}
+        <div class="alert alert-warning">
+            ⚠️ No hay usuarios disponibles con rol <strong>"Médico"</strong> sin perfil asignado.
+            {% if request.user.rol == "ADMIN" %}
+                <br>
+                <a href="{% url 'crear_usuario' %}" style="color: #856404; font-weight: bold; text-decoration: underline;">
+                    Haz clic aquí para crear un nuevo usuario con rol de Médico primero.
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-error">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="{{ form.usuario.id_for_label }}">
+                {{ form.usuario.label }} <span style="color: red;">*</span>
+            </label>
+            {{ form.usuario }}
+            {% if form.usuario.errors %}
+                <div class="field-error">
+                    {% for error in form.usuario.errors %}<span>{{ error }}</span>{% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.especialidad.id_for_label }}">
+                {{ form.especialidad.label }} <span style="color: red;">*</span>
+            </label>
+            {{ form.especialidad }}
+            {% if form.especialidad.errors %}
+                <div class="field-error">
+                    {% for error in form.especialidad.errors %}<span>{{ error }}</span>{% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.numero_licencia.id_for_label }}">
+                {{ form.numero_licencia.label }} <span style="color: red;">*</span>
+            </label>
+            {{ form.numero_licencia }}
+            {% if form.numero_licencia.errors %}
+                <div class="field-error">
+                    {% for error in form.numero_licencia.errors %}<span>{{ error }}</span>{% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.consultorio.id_for_label }}">
+                {{ form.consultorio.label }}
+            </label>
+            {{ form.consultorio }}
+            {% if form.consultorio.errors %}
+                <div class="field-error">
+                    {% for error in form.consultorio.errors %}<span>{{ error }}</span>{% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 25px; justify-content: flex-end;">
+            <a href="{% url 'lista_medicos' %}" class="btn btn-secondary">
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-success" {% if not medico and form.usuario.field.queryset.count == 0 %}disabled style="opacity: 0.6; cursor: not-allowed;"{% endif %}>
+                Guardar Médico
+            </button>
+        </div>
+    </form>
+
+</div>
+
+{% endblock %}

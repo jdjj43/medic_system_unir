@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}
+Médicos
+{% endblock %}
+
+{% block encabezado %}
+Médicos Registrados
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: #1E3A5F;">Personal Médico</h3>
+        <button type="button" class="btn btn-success" onclick="abrirModalFormMedico()">
+            + Nuevo Médico
+        </button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre del Médico</th>
+                <th>Usuario</th>
+                <th>Especialidad</th>
+                <th>N° Licencia</th>
+                <th>Consultorio</th>
+                <th>Teléfono</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for medico in medicos %}
+            <tr>
+                <td>{{ medico.id }}</td>
+                <td><strong>Dr. {{ medico.usuario.get_full_name|default:medico.usuario.username }}</strong></td>
+                <td>{{ medico.usuario.username }}</td>
+                <td>
+                    <span class="badge badge-medico">{{ medico.especialidad.nombre }}</span>
+                </td>
+                <td>{{ medico.numero_licencia }}</td>
+                <td>{{ medico.consultorio|default:"-" }}</td>
+                <td>{{ medico.usuario.telefono|default:"-" }}</td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <a href="{% url 'lista_citas' %}?medico={{ medico.id }}" class="btn" style="background-color: #2F5D8A; border-color: #1E3A5F; padding: 6px 12px; font-size: 13px;" title="Ver Citas de este Médico">
+                        📅 Ver Citas
+                    </a>
+                    <button type="button" class="btn btn-edit"
+                            onclick="abrirModalFormMedico('{{ medico.id }}', '{{ medico.usuario.id }}', '{{ medico.especialidad.id }}', '{{ medico.numero_licencia|escapejs }}', '{{ medico.consultorio|default:''|escapejs }}', 'Dr. {{ medico.usuario.get_full_name|default:medico.usuario.username|escapejs }}')">
+                        Editar
+                    </button>
+                    <button type="button" class="btn btn-danger"
+                            onclick="abrirModalEliminarMedico('{{ medico.id }}', 'Dr. {{ medico.usuario.get_full_name|default:medico.usuario.username|escapejs }}')">
+                        Eliminar
+                    </button>
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 25px; color: #666;">
+                    No existen médicos registrados aún.
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+
+<div class="modal-overlay" id="modalMedicoOverlay">
+    <div class="modal-container" style="max-width: 650px;">
+        <div class="modal-header">
+            <h3 id="modalMedicoTitulo">Registrar Nuevo Médico</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalMedicoOverlay')">&times;</button>
+        </div>
+        <form method="post" id="formMedico" action="{% url 'crear_medico' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+
+                {% if form_medico.usuario.field.queryset.count == 0 %}
+                    <div id="alert_no_usuarios" class="alert alert-warning" style="margin-bottom: 15px;">
+                        ⚠️ No hay usuarios con rol <strong>"Médico"</strong> disponibles sin perfil.
+                        {% if request.user.rol == "ADMIN" %}
+                            <br>
+                            <a href="{% url 'lista_usuarios' %}" style="color: #856404; font-weight: bold; text-decoration: underline;">
+                                Crear o cambiar rol a un usuario primero.
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <div class="form-group" id="group_medico_usuario">
+                    <label for="med_usuario">Usuario Asociado <span style="color: red;">*</span></label>
+                    <select name="usuario" id="med_usuario" class="form-control" required>
+                        <option value="">-- Seleccionar Usuario --</option>
+                        {% for usr in form_medico.usuario.field.queryset %}
+                            <option value="{{ usr.id }}">{{ usr.get_full_name|default:usr.username }} ({{ usr.username }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="med_especialidad">Especialidad Médica <span style="color: red;">*</span></label>
+                    <select name="especialidad" id="med_especialidad" class="form-control" required>
+                        <option value="">-- Seleccionar Especialidad --</option>
+                        {% for esp in form_medico.especialidad.field.queryset %}
+                            <option value="{{ esp.id }}">{{ esp.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="med_numero_licencia">Número de Licencia / Colegiatura <span style="color: red;">*</span></label>
+                    <input type="text" name="numero_licencia" id="med_numero_licencia" class="form-control" placeholder="Ej: MPPS-123456" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="med_consultorio">Consultorio / Ubicación</label>
+                    <input type="text" name="consultorio" id="med_consultorio" class="form-control" placeholder="Ej: Consultorio 204, Piso 2">
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalMedicoOverlay')">Cancelar</button>
+                <button type="submit" class="btn btn-success" id="btn_guardar_medico">Guardar Médico</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<div class="modal-overlay" id="modalEliminarMedicoOverlay">
+    <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-header" style="background: #c0392b;">
+            <h3>Confirmar Eliminación</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalEliminarMedicoOverlay')">&times;</button>
+        </div>
+        <form method="post" id="formEliminarMedico" action="">
+            {% csrf_token %}
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 40px; color: #e74c3c; margin-bottom: 10px;">⚠️</div>
+                <p style="font-size: 15px; color: #444;">
+                    ¿Estás seguro de que deseas eliminar permanentemente el registro del 
+                    <strong id="medico_eliminar_nombre" style="color: #1E3A5F;"></strong>?
+                </p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEliminarMedicoOverlay')">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Sí, Eliminar Registro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function cerrarModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    function abrirModalFormMedico(id = null, usuarioId = '', especialidadId = '', licencia = '', consultorio = '', nombreMedico = '') {
+        const form = document.getElementById('formMedico');
+        const titulo = document.getElementById('modalMedicoTitulo');
+        const usuarioSelect = document.getElementById('med_usuario');
+        const alertNoUsuarios = document.getElementById('alert_no_usuarios');
+        
+        if (id) {
+            titulo.textContent = 'Editar Médico: ' + nombreMedico;
+            form.action = '/medicos/' + id + '/editar/';
+            
+            // Asegurar que la opción del usuario actual exista en el select si estamos editando
+            let optionExist = Array.from(usuarioSelect.options).some(opt => opt.value === usuarioId);
+            if (!optionExist && usuarioId) {
+                let opt = document.createElement('option');
+                opt.value = usuarioId;
+                opt.text = nombreMedico;
+                usuarioSelect.add(opt);
+            }
+            
+            usuarioSelect.value = usuarioId;
+            document.getElementById('med_especialidad').value = especialidadId;
+            document.getElementById('med_numero_licencia').value = licencia;
+            document.getElementById('med_consultorio').value = consultorio;
+            if (alertNoUsuarios) alertNoUsuarios.style.display = 'none';
+        } else {
+            titulo.textContent = 'Registrar Nuevo Médico';
+            form.action = '{% url "crear_medico" %}';
+            usuarioSelect.value = '';
+            document.getElementById('med_especialidad').value = '';
+            document.getElementById('med_numero_licencia').value = '';
+            document.getElementById('med_consultorio').value = '';
+            if (alertNoUsuarios) alertNoUsuarios.style.display = 'block';
+        }
+        
+        document.getElementById('modalMedicoOverlay').classList.add('active');
+    }
+
+    function abrirModalEliminarMedico(id, nombre) {
+        const form = document.getElementById('formEliminarMedico');
+        form.action = '/medicos/' + id + '/eliminar/';
+        document.getElementById('medico_eliminar_nombre').textContent = '"' + nombre + '"';
+        document.getElementById('modalEliminarMedicoOverlay').classList.add('active');
+    }
+</script>
+
+{% endblock %}

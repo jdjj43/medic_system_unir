@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}
+Eliminar Usuario
+{% endblock %}
+
+{% block encabezado %}
+Eliminar Usuario
+{% endblock %}
+
+{% block content %}
+
+<div class="card" style="max-width: 550px; margin: 0 auto; text-align: center;">
+
+    <div style="font-size: 48px; color: #e74c3c; margin-bottom: 15px;">
+        ⚠️
+    </div>
+
+    <h3 style="margin-bottom: 15px; color: #1E3A5F;">
+        ¿Confirmar eliminación de usuario?
+    </h3>
+
+    <p style="font-size: 16px; color: #555; margin-bottom: 20px;">
+        ¿Estás seguro de que deseas eliminar permanentemente al usuario 
+        <strong style="color: #1E3A5F;">"{{ usuario_obj.username }}"</strong>
+        ({{ usuario_obj.get_full_name|default:"Sin nombre" }})?
+    </p>
+
+    <p style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; font-size: 14px; margin-bottom: 25px;">
+        Esta acción no se puede deshacer.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <a href="{% url 'lista_usuarios' %}" class="btn btn-secondary">
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-danger">
+                Sí, Eliminar Usuario
+            </button>
+        </div>
+    </form>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}
+Especialidades
+{% endblock %}
+
+{% block encabezado %}
+Especialidades Médicas
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: #1E3A5F;">Listado de Especialidades</h3>
+        <button type="button" class="btn btn-success" onclick="abrirModalFormEspecialidad()">
+            + Nueva Especialidad
+        </button>
+    </div>
+
+    <table class="tabla-especialidades">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Médicos</th>
+                <th style="text-align: center;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for especialidad in especialidades %}
+            <tr>
+                <td>{{ especialidad.id }}</td>
+                <td><strong>{{ especialidad.nombre }}</strong></td>
+                <td>
+                    {% if especialidad.descripcion %}
+                        {{ especialidad.descripcion }}
+                    {% else %}
+                        <span style="color: #888; font-style: italic;">Sin descripción</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge">{{ especialidad.num_medicos }}</span>
+                </td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <button type="button" class="btn btn-edit" 
+                            onclick="abrirModalFormEspecialidad('{{ especialidad.id }}', '{{ especialidad.nombre|escapejs }}', '{{ especialidad.descripcion|default:''|escapejs }}')">
+                        Editar
+                    </button>
+                    <button type="button" class="btn btn-danger" 
+                            onclick="abrirModalEliminarEspecialidad('{{ especialidad.id }}', '{{ especialidad.nombre|escapejs }}')">
+                        Eliminar
+                    </button>
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 25px; color: #666;">
+                    No existen especialidades registradas aún.
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+
+<div class="modal-overlay" id="modalEspecialidadOverlay">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 id="modalEspecialidadTitulo">Nueva Especialidad</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalEspecialidadOverlay')">&times;</button>
+        </div>
+        <form method="post" id="formEspecialidad" action="{% url 'crear_especialidad' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="esp_nombre">Nombre de la Especialidad <span style="color: red;">*</span></label>
+                    <input type="text" name="nombre" id="esp_nombre" class="form-control" placeholder="Ej: Cardiología, Pediatría..." required>
+                </div>
+                <div class="form-group">
+                    <label for="esp_descripcion">Descripción</label>
+                    <textarea name="descripcion" id="esp_descripcion" class="form-control" rows="4" placeholder="Descripción detallada..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEspecialidadOverlay')">Cancelar</button>
+                <button type="submit" class="btn btn-success">Guardar Especialidad</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<div class="modal-overlay" id="modalEliminarEspecialidadOverlay">
+    <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-header" style="background: #c0392b;">
+            <h3>Confirmar Eliminación</h3>
+            <button type="button" class="modal-close" onclick="cerrarModal('modalEliminarEspecialidadOverlay')">&times;</button>
+        </div>
+        <form method="post" id="formEliminarEspecialidad" action="">
+            {% csrf_token %}
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 40px; color: #e74c3c; margin-bottom: 10px;">⚠️</div>
+                <p style="font-size: 15px; color: #444;">
+                    ¿Estás seguro de que deseas eliminar la especialidad 
+                    <strong id="esp_eliminar_nombre" style="color: #1E3A5F;"></strong>?
+                </p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEliminarEspecialidadOverlay')">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Sí, Eliminar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function cerrarModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    function abrirModalFormEspecialidad(id = null, nombre = '', descripcion = '') {
+        const form = document.getElementById('formEspecialidad');
+        const titulo = document.getElementById('modalEspecialidadTitulo');
+        
+        if (id) {
+            titulo.textContent = 'Editar Especialidad';
+            form.action = '/medicos/especialidades/' + id + '/editar/';
+            document.getElementById('esp_nombre').value = nombre;
+            document.getElementById('esp_descripcion').value = descripcion;
+        } else {
+            titulo.textContent = 'Nueva Especialidad';
+            form.action = '{% url "crear_especialidad" %}';
+            document.getElementById('esp_nombre').value = '';
+            document.getElementById('esp_descripcion').value = '';
+        }
+        
+        document.getElementById('modalEspecialidadOverlay').classList.add('active');
+    }
+
+    function abrirModalEliminarEspecialidad(id, nombre) {
+        const form = document.getElementById('formEliminarEspecialidad');
+        form.action = '/medicos/especialidades/' + id + '/eliminar/';
+        document.getElementById('esp_eliminar_nombre').textContent = '"' + nombre + '"';
+        document.getElementById('modalEliminarEspecialidadOverlay').classList.add('active');
+    }
+</script>
+
+{% endblock %}

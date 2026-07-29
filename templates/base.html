@@ -1,0 +1,165 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        {% block title %}
+        Sistema Médico
+        {% endblock %}
+    </title>
+
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+
+</head>
+
+<body>
+
+    <div class="contenedor">
+
+
+
+        <aside class="sidebar" id="sidebar">
+
+            <div class="logo">
+
+                <img src="{% static 'img/logo.png' %}" alt="Logo">
+
+                <h2>Sistema Médico</h2>
+
+            </div>
+
+            <nav>
+
+                <ul>
+
+                    <li>
+                        <a href="{% url 'dashboard' %}">
+                            Dashboard
+                        </a>
+                    </li>
+
+                    {% if request.user.rol == "ADMIN" %}
+
+                    <li>
+                        <a href="{% url 'lista_usuarios' %}">
+                            Usuarios
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{% url 'lista_auditoria' %}">
+                            Auditoría
+                        </a>
+                    </li>
+
+
+                    {% endif %}
+
+                    <li>
+                        <a href="{% url 'lista_especialidades' %}">
+                            Especialidades
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{% url 'lista_medicos' %}">
+                            Médicos
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{% url 'lista_pacientes' %}">
+                            Pacientes
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{% url 'lista_citas' %}">
+                            Citas
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{% url 'lista_historias' %}">
+                            Historias Clínicas
+                        </a>
+                    </li>
+
+
+                    <li>
+                        <a href="{% url 'panel_reportes' %}">
+                            Reportes
+                        </a>
+                    </li>
+
+
+                </ul>
+
+            </nav>
+
+            <div class="usuario">
+
+                <strong>{{ request.user.get_full_name }}</strong>
+
+                <span>{{ request.user.rol }}</span>
+
+                <a class="logout" href="{% url 'logout' %}">
+                    Cerrar sesión
+                </a>
+
+            </div>
+
+        </aside>
+
+
+
+        <main class="contenido">
+
+            <header class="topbar">
+
+                <button id="menu-btn">
+
+                    ☰
+
+                </button>
+
+                <h2>
+
+                    {% block encabezado %}
+                    Dashboard
+                    {% endblock %}
+
+                </h2>
+
+            </header>
+
+            <section class="pagina">
+
+                {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% block content %}
+
+                {% endblock %}
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <script src="{% static 'js/menu.js' %}"></script>
+
+</body>
+
+</html>

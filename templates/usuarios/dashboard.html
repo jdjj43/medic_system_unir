@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}
+Dashboard
+{% endblock %}
+
+{% block encabezado %}
+Dashboard
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+    <h2>Bienvenido {{ request.user.get_full_name }}</h2>
+
+    <p>Sistema de Gestión de Consultorios Médicos.</p>
+
+</div>
+
+{% endblock %}

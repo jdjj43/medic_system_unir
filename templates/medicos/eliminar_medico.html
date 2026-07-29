@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}
+Eliminar Médico
+{% endblock %}
+
+{% block encabezado %}
+Eliminar Médico
+{% endblock %}
+
+{% block content %}
+
+<div class="card" style="max-width: 550px; margin: 0 auto; text-align: center;">
+
+    <div style="font-size: 48px; color: #e74c3c; margin-bottom: 15px;">
+        ⚠️
+    </div>
+
+    <h3 style="margin-bottom: 15px; color: #1E3A5F;">
+        ¿Confirmar eliminación de médico?
+    </h3>
+
+    <p style="font-size: 16px; color: #555; margin-bottom: 20px;">
+        ¿Estás seguro de que deseas eliminar el perfil del 
+        <strong style="color: #1E3A5F;">Dr. {{ medico.usuario.get_full_name|default:medico.usuario.username }}</strong>?
+    </p>
+
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; text-align: left; font-size: 14px; color: #555; margin-bottom: 25px;">
+        <p style="margin-bottom: 5px;"><strong>Especialidad:</strong> {{ medico.especialidad.nombre }}</p>
+        <p style="margin-bottom: 5px;"><strong>N° Licencia:</strong> {{ medico.numero_licencia }}</p>
+        <p style="margin-bottom: 0;"><strong>Consultorio:</strong> {{ medico.consultorio|default:"Sin asignar" }}</p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <a href="{% url 'lista_medicos' %}" class="btn btn-secondary">
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-danger">
+                Sí, Eliminar Registro
+            </button>
+        </div>
+    </form>
+
+</div>
+
+{% endblock %}
